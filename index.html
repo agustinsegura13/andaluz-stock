@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GroceryStock" />
+  <title>GroceryStock Pro</title>
+  <link rel="manifest" href="/manifest.json" />
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --teal-900: #042f2e;
+      --teal-800: #134e4a;
+      --teal-700: #115e59;
+      --teal-600: #0d9488;
+      --teal-500: #14b8a6;
+      --teal-400: #2dd4bf;
+      --teal-100: #ccfbf1;
+      --teal-50:  #f0fdfa;
+      --amber-600: #d97706;
+      --amber-100: #fef3c7;
+      --amber-50:  #fffbeb;
+      --red-600: #dc2626;
+      --red-100: #fee2e2;
+      --blue-600: #2563eb;
+      --blue-100: #dbeafe;
+      --gray-900: #111827;
+      --gray-800: #1f2937;
+      --gray-700: #374151;
+      --gray-500: #6b7280;
+      --gray-400: #9ca3af;
+      --gray-200: #e5e7eb;
+      --gray-100: #f3f4f6;
+      --gray-50:  #f9fafb;
+      --white: #ffffff;
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 22px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    }
+
+    html, body { height: 100%; overflow: hidden; background: var(--gray-50); }
+
+    body {
+      font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      color: var(--gray-900);
+      display: flex;
+      flex-direction: column;
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--white);
+      box-shadow: 0 0 40px rgba(0,0,0,0.12);
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      background: var(--teal-700);
+      color: white;
+      padding: 14px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      padding-top: max(14px, env(safe-area-inset-top));
+    }
+    .topbar-icon { font-size: 22px; }
+    .topbar-info { flex: 1; }
+    .topbar-title { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+    .topbar-sub { font-size: 12px; opacity: 0.75; margin-top: 1px; }
+    .topbar-pill {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 99px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      flex-shrink: 0;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px 2px 8px;
+      border: none;
+      background: transparent;
+      color: var(--gray-500);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .tab .tab-ico { font-size: 18px; line-height: 1; }
+    .tab.active { color: var(--teal-600); border-bottom-color: var(--teal-600); }
+    .tab-badge {
+      position: absolute;
+      top: 6px; right: calc(50% - 18px);
+      background: var(--red-600);
+      color: white;
+      border-radius: 99px;
+      font-size: 9px;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+    }
+
+    /* ── PANELS ── */
+    .panel { display: none; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .panel.active { display: block; }
+    .panel-inner { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+    }
+    .card-title { font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 10px; letter-spacing: 0.1px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      color: var(--gray-800);
+      transition: all 0.12s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .btn:active { transform: scale(0.96); opacity: 0.85; }
+    .btn-primary { background: var(--teal-600); color: white; border-color: var(--teal-600); }
+    .btn-primary:active { background: var(--teal-700); }
+    .btn-amber { background: var(--amber-100); color: var(--amber-600); border-color: var(--amber-100); }
+    .btn-red { background: var(--red-100); color: var(--red-600); border-color: var(--red-100); }
+    .btn-blue { background: var(--blue-100); color: var(--blue-600); border-color: var(--blue-100); }
+    .btn-ghost { background: var(--gray-100); color: var(--gray-700); border-color: var(--gray-100); }
+    .btn-full { width: 100%; }
+    .btn-sm { padding: 7px 12px; font-size: 12px; }
+    .btn-lg { padding: 13px 20px; font-size: 15px; border-radius: var(--radius-lg); }
+
+    /* ── INPUTS ── */
+    .input-wrap { display: flex; flex-direction: column; gap: 5px; }
+    .input-label { font-size: 12px; font-weight: 500; color: var(--gray-600, #4b5563); }
+    input[type=text], input[type=search] {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      background: var(--gray-50);
+      font-size: 14px;
+      color: var(--gray-900);
+      outline: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input[type=text]:focus, input[type=search]:focus {
+      border-color: var(--teal-500);
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.15);
+      background: var(--white);
+    }
+    .search-wrap { position: relative; }
+    .search-wrap input { padding-left: 38px; }
+    .search-ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray-400); font-size: 16px; pointer-events: none; }
+
+    /* ── PRODUCT ROWS ── */
+    .prod-list { display: flex; flex-direction: column; gap: 8px; }
+    .prod-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      background: var(--white);
+      cursor: pointer;
+      transition: all 0.12s;
+      box-shadow: var(--shadow);
+    }
+    .prod-row:active { background: var(--gray-50); transform: scale(0.99); }
+    .prod-row.selected { border-color: var(--teal-500); background: var(--teal-50); }
+    .prod-row.modified { border-left: 3px solid var(--amber-600); }
+
+    .prod-avatar {
+      width: 42px; height: 42px;
+      border-radius: var(--radius);
+      background: var(--teal-100);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      font-weight: 600;
+      color: var(--teal-700);
+      letter-spacing: -0.5px;
+    }
+    .prod-body { flex: 1; min-width: 0; }
+    .prod-name { font-size: 13px; font-weight: 500; color: var(--gray-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prod-meta { font-size: 11px; color: var(--gray-500); margin-top: 2px; display: flex; gap: 6px; align-items: center; }
+    .prod-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    .chip {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .chip-amber { background: var(--amber-100); color: var(--amber-600); }
+    .chip-teal  { background: var(--teal-100); color: var(--teal-700); }
+    .chip-red   { background: var(--red-100); color: var(--red-600); }
+    .chip-blue  { background: var(--blue-100); color: var(--blue-600); }
+    .chip-gray  { background: var(--gray-100); color: var(--gray-600, #4b5563); }
+
+    .check-btn {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 1.5px solid var(--gray-300, #d1d5db);
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.12s;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .check-btn.checked { background: var(--teal-600); border-color: var(--teal-600); color: white; }
+    .check-btn:active { transform: scale(0.9); }
+
+    /* ── STATS GRID ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .stat-val { font-size: 26px; font-weight: 600; color: var(--gray-900); letter-spacing: -1px; }
+    .stat-lbl { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+    /* ── FILTERS ── */
+    .filter-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .filter-row::-webkit-scrollbar { display: none; }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 500;
+      border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-600, #4b5563);
+      cursor: pointer; white-space: nowrap; transition: all 0.12s; flex-shrink: 0;
+    }
+    .filter-btn.active { background: var(--teal-600); color: white; border-color: var(--teal-600); }
+    .filter-btn:active { transform: scale(0.95); }
+
+    /* ── SCANNER ── */
+    .scanner-container {
+      position: relative;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      aspect-ratio: 4/3;
+    }
+    #preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .scanner-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .scanner-frame {
+      width: 60%; aspect-ratio: 3/1;
+      border: 2px solid var(--teal-400);
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+      position: relative;
+    }
+    .scanner-line {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--teal-400);
+      animation: scan 1.8s ease-in-out infinite;
+    }
+    @keyframes scan {
+      0% { top: 0%; opacity: 1; }
+      50% { top: 100%; opacity: 1; }
+      51% { opacity: 0; }
+      100% { top: 0%; opacity: 0; }
+    }
+    .scanner-corners::before, .scanner-corners::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+    }
+
+    /* ── MODAL ── */
+    .modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.22s;
+    }
+    .modal-bg.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      padding: 12px 18px 32px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: translateY(40px);
+      transition: transform 0.22s cubic-bezier(0.32,0.72,0,1);
+    }
+    .modal-bg.open .modal { transform: translateY(0); }
+    .modal-handle { width: 36px; height: 4px; background: var(--gray-200); border-radius: 99px; margin: 0 auto 16px; }
+    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: max(90px, calc(env(safe-area-inset-bottom) + 80px));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--gray-900);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 500;
+      opacity: 0;
+      transition: all 0.2s;
+      white-space: nowrap;
+      pointer-events: none;
+      max-width: 90vw;
+      text-align: center;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray-400);
+    }
+    .empty-ico { font-size: 40px; margin-bottom: 10px; }
+    .empty-title { font-size: 15px; font-weight: 500; color: var(--gray-600, #4b5563); margin-bottom: 6px; }
+    .empty-sub { font-size: 13px; line-height: 1.5; }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: var(--gray-100); margin: 4px 0; }
+
+    /* ── IMPORT TABLE ── */
+    .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview-table th { text-align: left; padding: 6px 8px; background: var(--gray-50); color: var(--gray-500); font-weight: 500; border-bottom: 1px solid var(--gray-200); }
+    .preview-table td { padding: 7px 8px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+    .preview-table tr:last-child td { border-bottom: none; }
+
+    /* ── PROGRESS ── */
+    .progress { height: 6px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--teal-500); border-radius: 99px; transition: width 0.3s; }
+
+    /* ── EXPORT OPTION ── */
+    .export-option {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .export-option.active { border-color: var(--teal-500); background: var(--teal-50); }
+    .export-option:active { transform: scale(0.99); }
+    .export-option input[type=radio] { width: 18px; height: 18px; accent-color: var(--teal-600); cursor: pointer; }
+    .export-option-body { flex: 1; }
+    .export-option-title { font-size: 13px; font-weight: 500; }
+    .export-option-sub { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+    .col-check { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+    .col-check:last-child { border-bottom: none; }
+    .col-check input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--teal-600); cursor: pointer; }
+    .col-check label { font-size: 13px; color: var(--gray-700); cursor: pointer; flex: 1; }
+    .col-check .col-hint { font-size: 11px; color: var(--gray-400); }
+
+    /* ── FILE INPUT ── */
+    .file-drop {
+      border: 2px dashed var(--gray-300, #d1d5db);
+      border-radius: var(--radius-lg);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--gray-50);
+    }
+    .file-drop:active, .file-drop.dragover { border-color: var(--teal-500); background: var(--teal-50); }
+    .file-drop-ico { font-size: 36px; margin-bottom: 8px; }
+    .file-drop-title { font-size: 14px; font-weight: 500; color: var(--gray-700); }
+    .file-drop-sub { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+    input[type=file] { display: none; }
+
+    /* ── SCAN RESULT CARD ── */
+    .scan-found {
+      border: 2px solid var(--teal-500);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      background: var(--teal-50);
+      animation: pop 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes pop { from { transform: scale(0.95); opacity: 0.5; } to { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-icon">🛒</div>
+    <div class="topbar-info">
+      <div class="topbar-title">GroceryStock Pro</div>
+      <div class="topbar-sub" id="topbar-sub">Sin productos cargados</div>
+    </div>
+    <div class="topbar-pill" onclick="showInfo()">ℹ︎</div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="go('import')" id="tab-import">
+      <span class="tab-ico">📥</span>Importar
+    </button>
+    <button class="tab" onclick="go('products')" id="tab-products">
+      <span class="tab-ico">📦</span>Productos
+    </button>
+    <button class="tab" onclick="go('scan')" id="tab-scan">
+      <span class="tab-ico">📷</span>Escanear
+    </button>
+    <button class="tab" onclick="go('export')" id="tab-export">
+      <span class="tab-ico" style="position:relative;display:inline-block;">✅<span class="tab-badge" id="sel-badge" style="display:none">0</span></span>Exportar
+    </button>
+  </div>
+
+  <!-- ═══════════════ PANEL: IMPORTAR ═══════════════ -->
+  <div class="panel active" id="panel-import">
+    <div class="panel-inner">
+
+      <div class="file-drop" onclick="document.getElementById('file-input').click()" id="file-drop">
+        <div class="file-drop-ico">📂</div>
+        <div class="file-drop-title">Tocar para cargar archivo</div>
+        <div class="file-drop-sub">Excel (.xlsx) o CSV con columnas SKU y nombre</div>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls" />
+
+      <button class="btn btn-ghost btn-full" onclick="loadDemo()">
+        🎲 Cargar 10 productos de prueba
+      </button>
+
+      <!-- Preview -->
+      <div id="import-preview" style="display:none">
+        <div class="card">
+          <div class="card-title" id="preview-title">Vista previa</div>
+          <div id="preview-progress-wrap" style="display:none;margin-bottom:10px;">
+            <div class="progress"><div class="progress-fill" id="preview-prog" style="width:0%"></div></div>
+            <div style="font-size:12px;color:var(--gray-500);margin-top:5px;" id="preview-status"></div>
+          </div>
+          <div id="preview-table-wrap" style="overflow-x:auto;"></div>
+          <div id="preview-more" style="font-size:12px;color:var(--gray-500);padding:8px 0;text-align:center;"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="cancelImport()" style="flex:1;">Cancelar</button>
+            <button class="btn btn-primary" onclick="confirmImport()" style="flex:2;" id="btn-import">✓ Importar productos</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Format hint -->
+      <div class="card">
+        <div class="card-title">Formato del archivo</div>
+        <p style="font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:10px;">
+          La primera fila debe tener los nombres de columna. Las columnas necesarias son <strong>sku</strong> y <strong>nombre</strong> (o <em>name</em> / <em>descripcion</em>).
+        </p>
+        <table class="preview-table">
+          <thead><tr><th>sku</th><th>nombre</th><th>precio</th></tr></thead>
+          <tbody>
+            <tr><td>7792070001</td><td>Coca-Cola 500ml</td><td>850</td></tr>
+            <tr><td>7791287001</td><td>Galletitas Oreo</td><td>1200</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: PRODUCTOS ═══════════════ -->
+  <div class="panel" id="panel-products">
+    <div class="panel-inner">
+
+      <div class="search-wrap">
+        <span class="search-ico">🔍</span>
+        <input type="search" id="search-inp" placeholder="Buscar por nombre o SKU..." oninput="renderProds()" autocomplete="off" />
+      </div>
+
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="setFilter('all',this)">Todos (<span id="cnt-all">0</span>)</button>
+        <button class="filter-btn" onclick="setFilter('modified',this)">Modificados (<span id="cnt-mod">0</span>)</button>
+        <button class="filter-btn" onclick="setFilter('selected',this)">Seleccionados (<span id="cnt-sel">0</span>)</button>
+      </div>
+
+      <div class="prod-list" id="prod-list">
+        <div class="empty">
+          <div class="empty-ico">📦</div>
+          <div class="empty-title">Sin productos</div>
+          <div class="empty-sub">Importá tu archivo Excel o CSV primero.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: ESCANEAR ═══════════════ -->
+  <div class="panel" id="panel-scan">
+    <div class="panel-inner">
+
+      <div class="card">
+        <div class="card-title">Escanear código de barras</div>
+        <div class="scanner-container" id="scanner-container" style="display:none">
+          <video id="preview" playsinline muted></video>
+          <div class="scanner-overlay">
+            <div class="scanner-frame">
+              <div class="scanner-line"></div>
+            </div>
+          </div>
+        </div>
+        <div id="scanner-placeholder" style="background:var(--gray-100);border-radius:var(--radius-lg);padding:32px 20px;text-align:center;margin-bottom:12px;">
+          <div style="font-size:36px;margin-bottom:8px;">📷</div>
+          <div style="font-size:13px;color:var(--gray-500);">La cámara se activa al presionar el botón</div>
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-scan" onclick="toggleScan()">Activar cámara</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Búsqueda manual</div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="manual-inp" placeholder="Escribí el SKU o nombre..." style="flex:1;" />
+          <button class="btn btn-primary" onclick="manualSearch()">Buscar</button>
+        </div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:6px;">Podés buscar por SKU exacto o parte del nombre del producto.</div>
+      </div>
+
+      <div id="scan-result" style="display:none;">
+        <div class="scan-found" id="scan-card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="prod-avatar" id="scan-avatar" style="width:52px;height:52px;font-size:22px;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:15px;font-weight:600;color:var(--gray-900);" id="scan-name"></div>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:2px;" id="scan-sku"></div>
+              <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;" id="scan-chips"></div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div style="margin-top:12px;">
+            <div class="input-label" style="margin-bottom:6px;">Cambiar nombre</div>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="scan-edit" style="flex:1;" />
+              <button class="btn btn-primary" onclick="saveFromScan()">Guardar</button>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <button class="btn btn-sm btn-ghost" style="flex:1;" onclick="toggleSelectScan()">Seleccionar</button>
+            <button class="btn btn-sm btn-amber" style="flex:1;" onclick="openEditModal(currentScanIdx)">✏️ Editar más</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: EXPORTAR ═══════════════ -->
+  <div class="panel" id="panel-export">
+    <div class="panel-inner">
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="st-total">0</div>
+          <div class="stat-lbl">productos totales</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="st-mod">0</div>
+          <div class="stat-lbl">modificados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="st-sel">0</div>
+          <div class="stat-lbl">seleccionados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="st-nomod">0</div>
+          <div class="stat-lbl">sin cambios</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">¿Qué exportar?</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="export-option active" id="eo-sel" onclick="setExportMode('selected',this)">
+            <input type="radio" name="emode" value="selected" checked />
+            <div class="export-option-body">
+              <div class="export-option-title">Solo los seleccionados</div>
+              <div class="export-option-sub" id="eo-sel-sub">0 productos seleccionados</div>
+            </div>
+          </div>
+          <div class="export-option" id="eo-mod" onclick="setExportMode('modified',this)">
+            <input type="radio" name="emode" value="modified" />
+            <div class="export-option-body">
+              <div class="export-option-title">Solo los modificados</div>
+              <div class="export-option-sub" id="eo-mod-sub">0 productos con cambios</div>
+            </div>
+          </div>
+          <div class="export-option" id="eo-all" onclick="setExportMode('all',this)">
+            <input type="radio" name="emode" value="all" />
+            <div class="export-option-body">
+              <div class="export-option-title">Todos los productos</div>
+              <div class="export-option-sub" id="eo-all-sub">0 productos en total</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Columnas a incluir</div>
+        <div class="col-check">
+          <input type="checkbox" id="col-sku" checked disabled />
+          <label for="col-sku">SKU <span class="col-hint">(siempre incluido)</span></label>
+        </div>
+        <div class="col-check">
+          <input type="checkbox" id="col-nombre" checked />
+          <label for="col-nombre">Nombre del producto</label>
+        </div>
+        <div class="col-check">
+          <input type="checkbox" id="col-precio" />
+          <label for="col-precio">Precio</label>
+        </div>
+        <div class="col-check">
+          <input type="checkbox" id="col-modificado" />
+          <label for="col-modificado">Estado de modificación</label>
+        </div>
+        <div class="col-check">
+          <input type="checkbox" id="col-nombre-orig" />
+          <label for="col-nombre-orig">Nombre original (antes del cambio)</label>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full btn-lg" onclick="doExport()">
+        📊 Exportar a Excel (.xlsx)
+      </button>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="selAllMod()">Marcar todos los modificados</button>
+        <button class="btn btn-red btn-sm" style="flex:1;" onclick="clearAll()">Limpiar selección</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ MODAL: EDITAR ═══════════════ -->
+  <div class="modal-bg" id="edit-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Editar producto</div>
+      <div style="background:var(--gray-50);border-radius:var(--radius);padding:12px;margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--gray-500);" id="m-sku"></div>
+        <div style="font-size:13px;color:var(--gray-700);margin-top:3px;" id="m-original"></div>
+      </div>
+      <div class="input-wrap" style="margin-bottom:16px;">
+        <label class="input-label">Nuevo nombre</label>
+        <input type="text" id="m-name" placeholder="Nombre del producto..." />
+      </div>
+      <div class="input-wrap" style="margin-bottom:16px;">
+        <label class="input-label">Precio</label>
+        <input type="text" id="m-price" placeholder="Precio (opcional)" />
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" style="flex:2;" onclick="saveModal()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+<script>
+// ═══════ STATE ═══════
+let products = [];
+let activeFilter = 'all';
+let editingIdx = null;
+let currentScanIdx = null;
+let scannerRunning = false;
+let codeReader = null;
+
+// ═══════ DEMO DATA ═══════
+const DEMO = [
+  {sku:'7792070001',name:'Coca-Cola 500ml',price:850},
+  {sku:'7791287001',name:'Galletitas Oreo 125g',price:1200},
+  {sku:'7792090012',name:'Leche La Serenísima 1L',price:950},
+  {sku:'7790070045',name:'Fideos Matarazzo Spaghetti',price:680},
+  {sku:'7793712033',name:'Aceite Natura 900ml',price:2100},
+  {sku:'7799800001',name:'Arroz Gallo 500g',price:720},
+  {sku:'7791022010',name:'Jabón Palmolive 100g',price:430},
+  {sku:'7794890021',name:'Yogur Activia Vainilla 190g',price:390},
+  {sku:'7792800044',name:'Pan Lactal Bimbo 500g',price:1150},
+  {sku:'7791890033',name:'Detergente Magistral 750ml',price:760},
+].map(p => ({...p, origName: p.name, modified: false, selected: false}));
+
+// ═══════ TOAST ═══════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ═══════ TAB NAV ═══════
+function go(tab) {
+  ['import','products','scan','export'].forEach(t => {
+    document.getElementById('panel-'+t).classList.remove('active');
+    document.getElementById('tab-'+t).classList.remove('active');
+  });
+  document.getElementById('panel-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab === 'products') { updateCounters(); renderProds(); }
+  if(tab === 'export') updateExportStats();
+  if(tab !== 'scan' && scannerRunning) stopScan();
+}
+
+// ═══════ IMPORT ═══════
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = ev => parseCSV(ev.target.result);
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(ev.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_csv(ws);
+        parseCSV(data);
+      } catch(err) { toast('Error al leer el archivo Excel'); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+});
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if(lines.length < 2) { toast('El archivo está vacío'); return; }
+  const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g,''));
+  const skuI = header.findIndex(h => h.includes('sku') || h.includes('código') || h.includes('codigo'));
+  const nameI = header.findIndex(h => h.includes('nombre') || h.includes('name') || h.includes('descrip') || h.includes('product'));
+  const priceI = header.findIndex(h => h.includes('precio') || h.includes('price') || h.includes('pvp'));
+  if(skuI < 0 || nameI < 0) {
+    toast('No encontré columnas SKU y nombre');
+    return;
+  }
+  const parsed = [];
+  for(let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g,''));
+    const sku = cols[skuI] || '';
+    const name = cols[nameI] || '';
+    if(!sku || !name) continue;
+    parsed.push({ sku, name, origName: name, price: priceI >= 0 ? (cols[priceI]||'') : '', modified: false, selected: false });
+  }
+  if(!parsed.length) { toast('No se encontraron productos válidos'); return; }
+  showPreview(parsed);
+}
+
+function showPreview(parsed) {
+  window._pendingImport = parsed;
+  document.getElementById('import-preview').style.display = 'block';
+  document.getElementById('preview-title').textContent = `Vista previa — ${parsed.length.toLocaleString()} productos`;
+  const sample = parsed.slice(0, 6);
+  let html = '<table class="preview-table"><thead><tr><th>SKU</th><th>Nombre</th>';
+  if(parsed[0].price !== '') html += '<th>Precio</th>';
+  html += '</tr></thead><tbody>';
+  sample.forEach(p => {
+    html += `<tr><td>${p.sku}</td><td>${p.name}</td>`;
+    if(parsed[0].price !== '') html += `<td>${p.price}</td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('preview-table-wrap').innerHTML = html;
+  if(parsed.length > 6) {
+    document.getElementById('preview-more').textContent = `... y ${(parsed.length - 6).toLocaleString()} productos más`;
+  }
+  document.getElementById('preview-progress-wrap').style.display = 'none';
+}
+
+function confirmImport() {
+  const pending = window._pendingImport;
+  if(!pending) return;
+  const btn = document.getElementById('btn-import');
+  btn.textContent = 'Importando...';
+  btn.disabled = true;
+  document.getElementById('preview-progress-wrap').style.display = 'block';
+  let p = 0;
+  const iv = setInterval(() => {
+    p += Math.random() * 15;
+    if(p > 100) p = 100;
+    document.getElementById('preview-prog').style.width = p + '%';
+    document.getElementById('preview-status').textContent = `Procesando... ${Math.round(p)}%`;
+    if(p >= 100) {
+      clearInterval(iv);
+      products = pending;
+      window._pendingImport = null;
+      document.getElementById('import-preview').style.display = 'none';
+      updateTopbar();
+      toast(`✓ ${products.length.toLocaleString()} productos importados`);
+      btn.textContent = '✓ Importar productos';
+      btn.disabled = false;
+    }
+  }, 60);
+}
+
+function cancelImport() {
+  window._pendingImport = null;
+  document.getElementById('import-preview').style.display = 'none';
+  document.getElementById('file-input').value = '';
+}
+
+function loadDemo() {
+  products = DEMO.map(p => ({...p}));
+  updateTopbar();
+  toast('10 productos de demo cargados');
+}
+
+function updateTopbar() {
+  const n = products.length;
+  document.getElementById('topbar-sub').textContent = n ? `${n.toLocaleString()} productos cargados` : 'Sin productos cargados';
+}
+
+// ═══════ PRODUCTS LIST ═══════
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderProds();
+}
+
+function updateCounters() {
+  document.getElementById('cnt-all').textContent = products.length;
+  document.getElementById('cnt-mod').textContent = products.filter(p => p.modified).length;
+  document.getElementById('cnt-sel').textContent = products.filter(p => p.selected).length;
+}
+
+function renderProds() {
+  updateCounters();
+  const q = (document.getElementById('search-inp').value || '').toLowerCase().trim();
+  let list = products.filter(p => {
+    if(q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
+    if(activeFilter === 'modified') return p.modified;
+    if(activeFilter === 'selected') return p.selected;
+    return true;
+  });
+  const el = document.getElementById('prod-list');
+  if(!products.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ico">📦</div><div class="empty-title">Sin productos</div><div class="empty-sub">Importá tu archivo en la pestaña Importar.</div></div>`;
+    return;
+  }
+  if(!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ico">🔍</div><div class="empty-title">Sin resultados</div><div class="empty-sub">Probá con otro término de búsqueda.</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const idx = products.indexOf(p);
+    const initials = p.name.trim().split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+    return `<div class="prod-row${p.selected?' selected':''}${p.modified?' modified':''}" onclick="openEditModal(${idx})">
+      <div class="prod-avatar">${initials}</div>
+      <div class="prod-body">
+        <div class="prod-name">${p.name}</div>
+        <div class="prod-meta">
+          <span>${p.sku}</span>
+          ${p.modified ? '<span class="chip chip-amber">editado</span>' : ''}
+          ${p.price ? `<span class="chip chip-gray">$${p.price}</span>` : ''}
+        </div>
+      </div>
+      <div class="prod-right">
+        <button class="check-btn${p.selected?' checked':''}" onclick="event.stopPropagation();toggleSel(${idx})">${p.selected?'✓':''}</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateSelBadge();
+}
+
+function toggleSel(idx) {
+  products[idx].selected = !products[idx].selected;
+  renderProds();
+  updateSelBadge();
+}
+
+function updateSelBadge() {
+  const n = products.filter(p => p.selected).length;
+  const b = document.getElementById('sel-badge');
+  b.textContent = n;
+  b.style.display = n ? 'flex' : 'none';
+}
+
+// ═══════ EDIT MODAL ═══════
+function openEditModal(idx) {
+  editingIdx = idx;
+  const p = products[idx];
+  document.getElementById('m-sku').textContent = 'SKU: ' + p.sku;
+  document.getElementById('m-original').textContent = p.modified ? `Nombre original: ${p.origName}` : 'Sin cambios aún';
+  document.getElementById('m-name').value = p.name;
+  document.getElementById('m-price').value = p.price || '';
+  document.getElementById('edit-modal').classList.add('open');
+  setTimeout(() => document.getElementById('m-name').focus(), 300);
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingIdx = null;
+}
+
+function saveModal() {
+  if(editingIdx === null) return;
+  const name = document.getElementById('m-name').value.trim();
+  if(!name) { toast('El nombre no puede estar vacío'); return; }
+  const price = document.getElementById('m-price').value.trim();
+  products[editingIdx].name = name;
+  if(price) products[editingIdx].price = price;
+  products[editingIdx].modified = true;
+  closeModal();
+  renderProds();
+  updateSelBadge();
+  toast('Producto guardado ✓');
+  // Update scan result if open
+  if(currentScanIdx === editingIdx) showScanResult(editingIdx);
+}
+
+// ═══════ SCANNER ═══════
+async function toggleScan() {
+  if(scannerRunning) { stopScan(); return; }
+  if(!products.length) { toast('Cargá productos primero'); return; }
+  try {
+    const container = document.getElementById('scanner-container');
+    const placeholder = document.getElementById('scanner-placeholder');
+    const btn = document.getElementById('btn-scan');
+    container.style.display = 'block';
+    placeholder.style.display = 'none';
+    btn.textContent = '⏹ Detener cámara';
+    btn.classList.remove('btn-primary'); btn.classList.add('btn-red');
+
+    if(typeof ZXing === 'undefined') { toast('Cargando librería de escaneo...'); return; }
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    scannerRunning = true;
+
+    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+    const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera') || d.label.toLowerCase().includes('environment')) || devices[devices.length - 1];
+    const deviceId = backCam ? backCam.deviceId : undefined;
+
+    await codeReader.decodeFromVideoDevice(deviceId, 'preview', (result, err) => {
+      if(result) {
+        const code = result.getText();
+        stopScan();
+        handleScannedCode(code);
+      }
+    });
+  } catch(err) {
+    stopScan();
+    toast('No se pudo acceder a la cámara');
+  }
+}
+
+function stopScan() {
+  if(codeReader) { try { codeReader.reset(); } catch(e){} codeReader = null; }
+  scannerRunning = false;
+  document.getElementById('scanner-container').style.display = 'none';
+  document.getElementById('scanner-placeholder').style.display = 'block';
+  const btn = document.getElementById('btn-scan');
+  btn.textContent = 'Activar cámara';
+  btn.classList.add('btn-primary'); btn.classList.remove('btn-red');
+}
+
+function handleScannedCode(code) {
+  document.getElementById('manual-inp').value = code;
+  manualSearch();
+  toast('Código escaneado: ' + code);
+}
+
+function manualSearch() {
+  const q = document.getElementById('manual-inp').value.trim().toLowerCase();
+  if(!q) return;
+  if(!products.length) { toast('Cargá productos primero'); return; }
+  const idx = products.findIndex(p => p.sku.toLowerCase() === q || p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+  if(idx < 0) { document.getElementById('scan-result').style.display = 'none'; toast('Producto no encontrado'); return; }
+  currentScanIdx = idx;
+  showScanResult(idx);
+}
+
+function showScanResult(idx) {
+  const p = products[idx];
+  const initials = p.name.trim().split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+  document.getElementById('scan-avatar').textContent = initials;
+  document.getElementById('scan-name').textContent = p.name;
+  document.getElementById('scan-sku').textContent = 'SKU: ' + p.sku + (p.price ? ` · $${p.price}` : '');
+  document.getElementById('scan-edit').value = p.name;
+  const chips = document.getElementById('scan-chips');
+  chips.innerHTML = (p.modified ? '<span class="chip chip-amber">editado</span>' : '<span class="chip chip-gray">sin cambios</span>') + (p.selected ? '<span class="chip chip-teal">seleccionado</span>' : '');
+  document.getElementById('scan-result').style.display = 'block';
+}
+
+function saveFromScan() {
+  if(currentScanIdx === null) return;
+  const name = document.getElementById('scan-edit').value.trim();
+  if(!name) { toast('El nombre no puede estar vacío'); return; }
+  products[currentScanIdx].name = name;
+  products[currentScanIdx].modified = true;
+  showScanResult(currentScanIdx);
+  toast('Nombre guardado ✓');
+}
+
+function toggleSelectScan() {
+  if(currentScanIdx === null) return;
+  products[currentScanIdx].selected = !products[currentScanIdx].selected;
+  showScanResult(currentScanIdx);
+  updateSelBadge();
+  toast(products[currentScanIdx].selected ? 'Seleccionado ✓' : 'Deseleccionado');
+}
+
+// ═══════ EXPORT ═══════
+function updateExportStats() {
+  const mod = products.filter(p => p.modified).length;
+  const sel = products.filter(p => p.selected).length;
+  document.getElementById('st-total').textContent = products.length.toLocaleString();
+  document.getElementById('st-mod').textContent = mod.toLocaleString();
+  document.getElementById('st-sel').textContent = sel.toLocaleString();
+  document.getElementById('st-nomod').textContent = (products.length - mod).toLocaleString();
+  document.getElementById('eo-sel-sub').textContent = `${sel} producto${sel !== 1 ? 's' : ''} seleccionado${sel !== 1 ? 's' : ''}`;
+  document.getElementById('eo-mod-sub').textContent = `${mod} producto${mod !== 1 ? 's' : ''} con cambios`;
+  document.getElementById('eo-all-sub').textContent = `${products.length.toLocaleString()} productos en total`;
+}
+
+function setExportMode(mode, el) {
+  document.querySelectorAll('.export-option').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  el.querySelector('input[type=radio]').checked = true;
+}
+
+function selAllMod() {
+  products.forEach(p => { if(p.modified) p.selected = true; });
+  updateExportStats(); updateSelBadge();
+  toast('Todos los modificados seleccionados');
+}
+
+function clearAll() {
+  products.forEach(p => p.selected = false);
+  updateExportStats(); updateSelBadge();
+  toast('Selección limpiada');
+}
+
+function doExport() {
+  if(!products.length) { toast('No hay productos para exportar'); return; }
+  const mode = document.querySelector('input[name=emode]:checked').value;
+  let list;
+  if(mode === 'selected') list = products.filter(p => p.selected);
+  else if(mode === 'modified') list = products.filter(p => p.modified);
+  else list = products;
+  if(!list.length) { toast('No hay productos en la selección'); return; }
+
+  const cols = [];
+  cols.push('sku');
+  if(document.getElementById('col-nombre').checked) cols.push('nombre');
+  if(document.getElementById('col-precio').checked) cols.push('precio');
+  if(document.getElementById('col-modificado').checked) cols.push('modificado');
+  if(document.getElementById('col-nombre-orig').checked) cols.push('nombre_original');
+
+  const rows = list.map(p => {
+    const row = {};
+    cols.forEach(c => {
+      if(c === 'sku') row['sku'] = p.sku;
+      if(c === 'nombre') row['nombre'] = p.name;
+      if(c === 'precio') row['precio'] = p.price || '';
+      if(c === 'modificado') row['modificado'] = p.modified ? 'SI' : 'NO';
+      if(c === 'nombre_original') row['nombre_original'] = p.origName;
+    });
+    return row;
+  });
+
+  try {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+    const date = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `productos_${date}.xlsx`);
+    toast(`${list.length.toLocaleString()} productos exportados ✓`);
+  } catch(e) {
+    // Fallback CSV
+    const header = cols.join(',');
+    const csvRows = list.map(p => {
+      return cols.map(c => {
+        if(c === 'sku') return p.sku;
+        if(c === 'nombre') return `"${p.name.replace(/"/g,'""')}"`;
+        if(c === 'precio') return p.price || '';
+        if(c === 'modificado') return p.modified ? 'SI' : 'NO';
+        if(c === 'nombre_original') return `"${p.origName.replace(/"/g,'""')}"`;
+        return '';
+      }).join(',');
+    });
+    const csv = '\uFEFF' + [header, ...csvRows].join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `productos_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast(`${list.length.toLocaleString()} productos exportados ✓`);
+  }
+}
+
+// ═══════ INFO ═══════
+function showInfo() {
+  toast('GroceryStock Pro v1.0 — Todos los datos se guardan en el navegador');
+}
+
+// Close modal on bg click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if(e.target === this) closeModal();
+});
+
+// Save with Enter in modal
+document.getElementById('m-name').addEventListener('keydown', e => { if(e.key === 'Enter') saveModal(); });
+document.getElementById('manual-inp').addEventListener('keydown', e => { if(e.key === 'Enter') manualSearch(); });
+document.getElementById('scan-edit').addEventListener('keydown', e => { if(e.key === 'Enter') saveFromScan(); });
+</script>
+</body>
+</html>
