@@ -479,6 +479,10 @@
         🎲 Cargar 10 productos de prueba
       </button>
 
+      <button class="btn btn-red btn-sm btn-full" onclick="clearStorage()" style="font-size:12px;">
+        🗑 Borrar todos los productos guardados
+      </button>
+
       <!-- Preview -->
       <div id="import-preview" style="display:none">
         <div class="card">
@@ -734,6 +738,37 @@ const DEMO = [
   {sku:'7791890033',name:'Detergente Magistral 750ml',price:760},
 ].map(p => ({...p, origName: p.name, modified: false, selected: false}));
 
+// ═══════ LOCALSTORAGE ═══════
+const STORAGE_KEY = 'andaluz_products_v1';
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  } catch(e) {
+    toast('Sin espacio para guardar. Exportá y reimportá.');
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) {
+      products = JSON.parse(raw);
+      updateTopbar();
+      toast('✓ ' + products.length.toLocaleString() + ' productos recuperados');
+    }
+  } catch(e) { products = []; }
+}
+
+function clearStorage() {
+  if(!confirm('¿Borrar todos los productos? Esta acción no se puede deshacer.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  products = [];
+  updateTopbar();
+  renderProds();
+  toast('Datos borrados');
+}
+
 // ═══════ TOAST ═══════
 let toastTimer;
 function toast(msg) {
@@ -869,7 +904,8 @@ function confirmImport() {
       window._pendingImport = null;
       document.getElementById('import-preview').style.display = 'none';
       updateTopbar();
-      toast(`✓ ${products.length.toLocaleString()} productos importados`);
+      saveToStorage();
+      toast(`✓ ${products.length.toLocaleString()} productos importados y guardados`);
       btn.textContent = '✓ Importar productos';
       btn.disabled = false;
     }
@@ -992,6 +1028,7 @@ function saveModal() {
   closeModal();
   renderProds();
   updateSelBadge();
+  saveToStorage();
   toast('Producto guardado ✓');
   // Update scan result if open
   if(currentScanIdx === editingIdx) showScanResult(editingIdx);
@@ -1080,6 +1117,7 @@ function saveFromScan() {
   products[currentScanIdx].name = name;
   products[currentScanIdx].modified = true;
   showScanResult(currentScanIdx);
+  saveToStorage();
   toast('Nombre guardado ✓');
 }
 
@@ -1194,6 +1232,9 @@ document.getElementById('edit-modal').addEventListener('click', function(e) {
 document.getElementById('m-name').addEventListener('keydown', e => { if(e.key === 'Enter') saveModal(); });
 document.getElementById('manual-inp').addEventListener('keydown', e => { if(e.key === 'Enter') manualSearch(); });
 document.getElementById('scan-edit').addEventListener('keydown', e => { if(e.key === 'Enter') saveFromScan(); });
+
+// ═══════ INIT — load saved data on startup ═══════
+loadFromStorage();
 </script>
 </body>
 </html>
