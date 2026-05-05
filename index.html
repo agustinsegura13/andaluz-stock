@@ -784,20 +784,46 @@ function parseCSV(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   if(lines.length < 2) { toast('El archivo está vacío'); return; }
   const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g,''));
-  const skuI = header.findIndex(h => h.includes('sku') || h.includes('código') || h.includes('codigo'));
-  const nameI = header.findIndex(h => h.includes('nombre') || h.includes('name') || h.includes('descrip') || h.includes('product'));
-  const priceI = header.findIndex(h => h.includes('precio') || h.includes('price') || h.includes('pvp'));
+
+  const skuI = header.findIndex(h => h.includes('código de barras') || h.includes('codigo de barras') || h.includes('sku') || h.includes('código') || h.includes('codigo'));
+  const nameI = header.findIndex(h => h.includes('descripci') || h.includes('nombre') || h.includes('name') || h.includes('product'));
+  // Prefer "venta minorista" > "venta" > any "precio" — avoid picking "costo"
+  let priceI = header.findIndex(h => h.includes('venta minorista'));
+  if(priceI < 0) priceI = header.findIndex(h => h.includes('venta') && !h.includes('mayorista'));
+  if(priceI < 0) priceI = header.findIndex(h => (h.includes('precio') || h.includes('price') || h.includes('pvp')) && !h.includes('costo') && !h.includes('cost') && !h.includes('usd'));
+
   if(skuI < 0 || nameI < 0) {
     toast('No encontré columnas SKU y nombre');
     return;
   }
+
+  // Smart CSV split — handles commas inside quoted fields
+  function splitCSVLine(line) {
+    const result = [];
+    let cur = '', inQ = false;
+    for(let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if(ch === '"') { inQ = !inQ; }
+      else if(ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    result.push(cur.trim());
+    return result;
+  }
+
   const parsed = [];
   for(let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g,''));
-    const sku = cols[skuI] || '';
-    const name = cols[nameI] || '';
+    const cols = splitCSVLine(lines[i]);
+    const sku = (cols[skuI] || '').replace(/"/g,'').trim();
+    const name = (cols[nameI] || '').replace(/"/g,'').trim();
     if(!sku || !name) continue;
-    parsed.push({ sku, name, origName: name, price: priceI >= 0 ? (cols[priceI]||'') : '', modified: false, selected: false });
+    let price = '';
+    if(priceI >= 0) {
+      price = (cols[priceI] || '').replace(/"/g,'').replace(',', '.').trim();
+      // Remove formula artifacts like =J2*0.7
+      if(price.startsWith('=')) price = '';
+    }
+    parsed.push({ sku, name, origName: name, price, modified: false, selected: false });
   }
   if(!parsed.length) { toast('No se encontraron productos válidos'); return; }
   showPreview(parsed);
@@ -884,8 +910,13 @@ function updateCounters() {
 function renderProds() {
   updateCounters();
   const q = (document.getElementById('search-inp').value || '').toLowerCase().trim();
+  // Split into words — all words must appear somewhere in name or sku
+  const words = q ? q.split(/\s+/).filter(Boolean) : [];
   let list = products.filter(p => {
-    if(q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
+    if(words.length) {
+      const haystack = (p.name + ' ' + p.sku).toLowerCase();
+      if(!words.every(w => haystack.includes(w))) return false;
+    }
     if(activeFilter === 'modified') return p.modified;
     if(activeFilter === 'selected') return p.selected;
     return true;
@@ -1020,7 +1051,11 @@ function manualSearch() {
   const q = document.getElementById('manual-inp').value.trim().toLowerCase();
   if(!q) return;
   if(!products.length) { toast('Cargá productos primero'); return; }
-  const idx = products.findIndex(p => p.sku.toLowerCase() === q || p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+  const words = q.split(/\s+/).filter(Boolean);
+  const idx = products.findIndex(p => {
+    const haystack = (p.name + ' ' + p.sku).toLowerCase();
+    return words.every(w => haystack.includes(w));
+  });
   if(idx < 0) { document.getElementById('scan-result').style.display = 'none'; toast('Producto no encontrado'); return; }
   currentScanIdx = idx;
   showScanResult(idx);
